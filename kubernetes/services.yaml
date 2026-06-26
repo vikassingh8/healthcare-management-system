@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+  namespace: healthcare-system
+  labels:
+    app: hms-backend
+spec:
+  selector:
+    app: hms-backend
+  ports:
+    - protocol: TCP
+      port: 3001
+      targetPort: 3001
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-service
+  namespace: healthcare-system
+  labels:
+    app: hms-frontend
+spec:
+  selector:
+    app: hms-frontend
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: ClusterIP

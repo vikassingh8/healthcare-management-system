@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: healthcare-system
+  labels:
+    app: healthcare-management-system
+    environment: production
+    compliance: hipaa-gdpr

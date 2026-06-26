@@ -1,0 +1,58 @@
+version: '3.9'
+
+networks:
+  hms-network:
+    driver: bridge
+
+volumes:
+  db-data:
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: hms-backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      JWT_SECRET: ${JWT_SECRET:-dev-secret-change-in-prod}
+      JWT_EXPIRY: 8h
+      DB_PATH: /app/data/healthcare.db
+      ALLOWED_ORIGINS: http://localhost:3000
+    volumes:
+      - db-data:/app/data
+    networks:
+      - hms-network
+    ports:
+      - "3001:3001"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        REACT_APP_API_URL: /api
+    container_name: hms-frontend
+    restart: unless-stopped
+    environment:
+      REACT_APP_API_URL: /api
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - hms-network
+    ports:
+      - "3000:80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost/nginx-health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
