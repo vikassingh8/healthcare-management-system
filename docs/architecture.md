@@ -10,6 +10,12 @@ It's a three-tier web app — React front end, Node/Express API, SQL database �
 
 The vector file is `docs/diagrams/architecture.svg` — it drops straight into PowerPoint 365 and stays sharp at any size. `architecture.png` is the same diagram as a raster, which is what goes into the Word report.
 
+## Database schema
+
+Five tables, and everything hangs off `users`. A patient and a doctor are both just rows in `users` with a different `role`; appointments, health records and prescriptions each point back to the patient and the doctor who created them, and every sensitive action gets written to `audit_logs`. The chain also runs sideways — a prescription is tied to the record it came from, which is tied to the appointment.
+
+![Database schema](diagrams/database-schema.svg)
+
 ## How a request actually flows
 
 Say a doctor opens a patient's record:
