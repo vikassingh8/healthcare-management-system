@@ -6,49 +6,9 @@ It's a three-tier web app — React front end, Node/Express API, SQL database �
 
 ## Diagram
 
-```mermaid
-flowchart TB
-    user([Patient / Doctor / Admin])
+![Azure architecture](diagrams/architecture.svg)
 
-    subgraph edge[Edge / Public]
-        fd[Azure Front Door]
-        appgw[Application Gateway + WAF]
-    end
-
-    subgraph vnet[Virtual Network 10.0.0.0/16]
-        subgraph websub[Subnet: web 10.0.1.0/24]
-            ing[AKS Ingress]
-            fe[Frontend pods<br/>React + Nginx]
-            be[Backend pods<br/>Node/Express API]
-        end
-        subgraph datasub[Subnet: data 10.0.2.0/24 - no public route]
-            sql[(Azure SQL<br/>TDE + geo-replica)]
-            redis[(Redis Cache)]
-        end
-        fw[Azure Firewall]
-    end
-
-    kv[Key Vault]
-    aad[Azure AD]
-    apim[API Management]
-    mon[Monitor + App Insights]
-
-    user --> fd --> appgw --> ing
-    ing --> fe
-    ing --> be
-    be --> apim
-    be --> sql
-    be --> redis
-    be -. pulls secrets .-> kv
-    be -. validates tokens .-> aad
-    sql -. TDE key .-> kv
-    be -. telemetry .-> mon
-    datasub -.outbound only.-> fw
-```
-
-GitHub and most markdown viewers render the Mermaid block above as a live diagram. For slides and the Word report there's a rendered version in `docs/diagrams/` — `architecture.svg` (vector, drops straight into PowerPoint 365) and `architecture.png`:
-
-![Azure architecture](diagrams/architecture.png)
+The vector file is `docs/diagrams/architecture.svg` — it drops straight into PowerPoint 365 and stays sharp at any size. `architecture.png` is the same diagram as a raster, which is what goes into the Word report.
 
 ## How a request actually flows
 
