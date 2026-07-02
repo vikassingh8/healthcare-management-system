@@ -28,4 +28,9 @@ async function seed() {
   users.forEach(u => console.log(`  ${u.role}: ${u.email} / ${u.password}`));
 }
 
-seed().catch(console.error);
+// Run directly with `node src/seed.js`, or import and call from app startup.
+if (require.main === module) {
+  seed().catch(console.error);
+}
+
+module.exports = seed;

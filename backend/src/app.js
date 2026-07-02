@@ -96,10 +96,23 @@ app.use((err, req, res, next) => {
 });
 
 if (require.main === module) {
-  app.listen(PORT, () => {
-    console.log(`Healthcare Management API running on port ${PORT}`);
-    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  });
+  const start = async () => {
+    // In the cloud demo the container starts with an empty SQLite file, so
+    // seed the demo accounts on first boot. Guarded by an env flag so local
+    // runs and the test suite aren't affected. seed() is idempotent.
+    if (process.env.SEED_ON_START === 'true') {
+      try {
+        await require('./seed')();
+      } catch (err) {
+        console.error('Startup seed failed:', err.message);
+      }
+    }
+    app.listen(PORT, () => {
+      console.log(`Healthcare Management API running on port ${PORT}`);
+      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    });
+  };
+  start();
 }
 
 module.exports = app;

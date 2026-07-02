@@ -3,6 +3,9 @@ WORKDIR /app
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 FROM base AS deps
+# better-sqlite3 is a native module — it needs a toolchain to compile.
+# These stay in the deps stage only; the final image copies just node_modules.
+RUN apk add --no-cache python3 make g++
 COPY package*.json ./
 RUN npm ci --only=production && npm cache clean --force
 

@@ -44,7 +44,7 @@ backend/        Node/Express REST API + Jest tests
 frontend/       React single-page app, served by Nginx
 kubernetes/     AKS manifests (deployments, ingress, HPA, Key Vault CSI)
 terraform/      Azure infra as code (VNet, AKS, SQL, Key Vault, APIM...)
-docs/           Report, architecture notes, Azure setup guide
+docs/           Report and architecture notes
 docker-compose.yml
 ```
 
