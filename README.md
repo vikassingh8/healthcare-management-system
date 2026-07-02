@@ -15,25 +15,11 @@ A quick note on scope: I built and tested the application end to end, and I wrot
 
 ## How the pieces fit together
 
-In production the request path looks like this:
+In production the request path runs from Front Door, through the Application
+Gateway (WAF) and the AKS ingress, to the frontend and backend pods, and then to
+Azure SQL, Key Vault and Redis in the locked-down data subnet:
 
-```
-Internet
-   │
-   ▼
-Azure Front Door  ──►  Application Gateway (WAF)  ──►  AKS Ingress
-                                                          │
-                                          ┌───────────────┴───────────────┐
-                                          ▼                               ▼
-                                   Frontend pod                     Backend pod
-                                   (React + Nginx)                  (Node/Express)
-                                                                         │
-                            ┌──────────────┬──────────────┬─────────────┘
-                            ▼              ▼              ▼
-                       Azure SQL      Key Vault      Redis Cache
-                       (TDE + geo-    (secrets,      (sessions,
-                        replication)   TDE keys)      query cache)
-```
+![Azure architecture](docs/diagrams/architecture.svg)
 
 Locally it's simpler: the React build is served by Nginx, which proxies `/api` to the Node backend, and the backend talks to a SQLite file instead of Azure SQL. Same code, smaller database. I kept the data layer behind one module (`backend/src/database.js`), so moving to Azure SQL is contained to that file — swap the `better-sqlite3` driver for an mssql one and read the connection string from Key Vault. The routes don't change. It's not literally zero work, but it's one module instead of every endpoint.
 
