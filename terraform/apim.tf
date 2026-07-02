@@ -37,12 +37,12 @@ resource "azurerm_api_management" "main" {
   }
 
   security {
-    enable_backend_ssl30                  = false
-    enable_backend_tls10                  = false
-    enable_backend_tls11                  = false
-    enable_frontend_ssl30                 = false
-    enable_frontend_tls10                 = false
-    enable_frontend_tls11                 = false
+    enable_backend_ssl30                                = false
+    enable_backend_tls10                                = false
+    enable_backend_tls11                                = false
+    enable_frontend_ssl30                               = false
+    enable_frontend_tls10                               = false
+    enable_frontend_tls11                               = false
     tls_ecdhe_ecdsa_with_aes128_cbc_sha_ciphers_enabled = false
     tls_ecdhe_ecdsa_with_aes256_cbc_sha_ciphers_enabled = false
     tls_ecdhe_rsa_with_aes128_cbc_sha_ciphers_enabled   = false
@@ -70,13 +70,13 @@ resource "azurerm_api_management_logger" "main" {
 
 # APIM API — HMS Backend API definition
 resource "azurerm_api_management_api" "hms_api" {
-  name                = "hms-api"
-  resource_group_name = azurerm_resource_group.main.name
-  api_management_name = azurerm_api_management.main.name
-  revision            = "1"
-  display_name        = "Healthcare Management System API"
-  path                = "hms"
-  protocols           = ["https"]
+  name                  = "hms-api"
+  resource_group_name   = azurerm_resource_group.main.name
+  api_management_name   = azurerm_api_management.main.name
+  revision              = "1"
+  display_name          = "Healthcare Management System API"
+  path                  = "hms"
+  protocols             = ["https"]
   subscription_required = false
 
   service_url = "http://backend-service.healthcare-system.svc.cluster.local:3001"
@@ -225,12 +225,12 @@ resource "azurerm_api_management_api_diagnostic" "hms_diag" {
   http_correlation_protocol = "W3C"
 
   frontend_request {
-    body_bytes = 0
+    body_bytes     = 0
     headers_to_log = ["Authorization", "Content-Type", "X-Forwarded-For"]
   }
 
   frontend_response {
-    body_bytes = 0
+    body_bytes     = 0
     headers_to_log = ["Content-Type"]
   }
 

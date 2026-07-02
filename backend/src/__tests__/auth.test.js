@@ -5,17 +5,29 @@ process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 'test-jwt-secret-ci';
 process.env.DB_PATH = path.join(__dirname, '../../data/test.db');
 
+// Start from a clean database every run. SQLite's WAL mode leaves -shm/-wal
+// sidecar files behind, and if those survive a previous run their data gets
+// replayed and the registration tests see "duplicate email". Wipe all three
+// before the app opens the database (getDB is lazy, so this runs first).
+const fs = require('fs');
+for (const ext of ['', '-shm', '-wal']) {
+  const f = process.env.DB_PATH + ext;
+  if (fs.existsSync(f)) fs.unlinkSync(f);
+}
+
 const app = require('../app');
 
 let adminToken, doctorToken, patientToken;
 let doctorId, patientId;
 
-// Clean up test DB after all tests
+// Clean up the test DB (and its WAL sidecars) after all tests.
 afterAll(() => {
-  try {
-    const fs = require('fs');
-    if (fs.existsSync(process.env.DB_PATH)) fs.unlinkSync(process.env.DB_PATH);
-  } catch (_) {}
+  for (const ext of ['', '-shm', '-wal']) {
+    try {
+      const f = process.env.DB_PATH + ext;
+      if (fs.existsSync(f)) fs.unlinkSync(f);
+    } catch (_) {}
+  }
 });
 
 describe('Authentication API', () => {

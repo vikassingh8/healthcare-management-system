@@ -24,7 +24,12 @@ services:
     volumes:
       - db-data:/app/data
     networks:
-      - hms-network
+      hms-network:
+        # the frontend's nginx.conf proxies /api to "backend-service" (the
+        # Kubernetes service name). Alias it here so the same config also
+        # works under docker-compose, where this service is called "backend".
+        aliases:
+          - backend-service
     ports:
       - "3001:3001"
     healthcheck:

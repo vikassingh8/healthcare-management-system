@@ -1,174 +1,136 @@
 # Healthcare Management System
 
-A production-grade, HIPAA/GDPR-compliant healthcare management platform deployed on Microsoft Azure.
+This is my capstone project for the Cloud Architecture & Azure module. It's a working healthcare app (patients, doctors, admins) that I built to run locally with Docker, plus the full Azure design and infrastructure-as-code for how it would be deployed in the cloud.
 
-## Features
+A quick note on scope: I built and tested the application end to end, and I wrote the Terraform/Kubernetes for the Azure side. I did **not** leave the heavy Azure resources (Azure Firewall, DDoS Standard, geo-replicated SQL) running on a student subscription — I ran the cheaper parts and treated the rest as design-and-IaC. The docs are explicit about what's actually deployed versus what the architecture specifies.
 
-| Feature | Description |
-|---------|-------------|
-| **User Management** | Patient, Doctor, Admin roles with JWT auth + bcrypt |
-| **Appointment Scheduling** | Book, confirm, cancel with conflict detection |
-| **Electronic Health Records** | Role-based EHR creation and access |
-| **Prescription Management** | Doctor-issued digital prescriptions |
-| **Admin Control Panel** | RBAC administration, user management, audit logs |
-| **Security Audit Trail** | HIPAA-compliant logging of all data access events |
+## What it does
 
-## Architecture
+- **Accounts and login** for three roles: patient, doctor, admin. Passwords are hashed with bcrypt, sessions use JWTs.
+- **Appointments** — patients book a slot with a doctor, the app checks for clashes, doctors confirm or complete them.
+- **Electronic Health Records** — doctors write up a visit (diagnosis, vitals, treatment). A patient can read their own records and nobody else's.
+- **Prescriptions** — doctors issue them digitally, patients see their own list.
+- **Admin panel** — manage users, change roles, deactivate accounts.
+- **Audit log** — every login and every record access gets written to an audit table, which is the kind of thing HIPAA expects you to have.
 
-```
-Internet → Azure Front Door → Application Gateway (WAF) → AKS Ingress
-                                                              ├── Frontend (Nginx/React)
-                                                              └── Backend (Node.js API)
-                                                                    ├── Azure SQL (TDE + Geo-replication)
-                                                                    ├── Azure Key Vault
-                                                                    ├── Azure Redis Cache
-                                                                    └── Azure API Management
-```
+## How the pieces fit together
 
-## Project Structure
+In production the request path looks like this:
 
 ```
-.
-├── backend/                  # Node.js/Express REST API
-│   ├── src/
-│   │   ├── app.js           # Express entry point
-│   │   ├── database.js      # SQLite schema (Azure SQL in prod)
-│   │   ├── seed.js          # Demo data seeding
-│   │   ├── middleware/
-│   │   │   ├── auth.js      # JWT + audit logging
-│   │   │   └── rbac.js      # Role-Based Access Control
-│   │   ├── routes/
-│   │   │   ├── auth.js      # Register, login, me
-│   │   │   ├── users.js     # User management + admin
-│   │   │   ├── appointments.js
-│   │   │   ├── ehr.js
-│   │   │   └── prescriptions.js
-│   │   └── __tests__/       # Jest integration tests
-│   └── Dockerfile
-├── frontend/                 # React.js SPA
-│   ├── src/
-│   │   ├── App.jsx          # Routes + protected routes
-│   │   ├── api/api.js       # Axios client
-│   │   ├── contexts/        # Auth context
-│   │   └── pages/           # Patient, Doctor, Admin dashboards
-│   ├── nginx.conf
-│   └── Dockerfile
-├── kubernetes/               # AKS manifests
-│   ├── namespace.yaml
-│   ├── backend-deployment.yaml
-│   ├── frontend-deployment.yaml
-│   ├── services.yaml
-│   ├── ingress.yaml         # App Gateway + WAF
-│   ├── hpa.yaml             # Horizontal Pod Autoscaler
-│   └── secrets.yaml         # Azure Key Vault CSI
-├── terraform/                # Azure Infrastructure as Code
-│   ├── main.tf              # Resource group, App Insights
-│   ├── networking.tf        # VNet, subnets, NSGs, Firewall, WAF
-│   ├── aks.tf               # AKS cluster + ACR
-│   ├── apim.tf              # Azure API Management
-│   ├── database.tf          # Azure SQL + Redis Cache
-│   ├── security.tf          # Key Vault, Azure AD, Defender, Policy
-│   ├── variables.tf
-│   └── outputs.tf
-├── .github/workflows/
-│   └── ci-cd.yml            # GitHub Actions pipeline
-└── docker-compose.yml        # Local development
+Internet
+   │
+   ▼
+Azure Front Door  ──►  Application Gateway (WAF)  ──►  AKS Ingress
+                                                          │
+                                          ┌───────────────┴───────────────┐
+                                          ▼                               ▼
+                                   Frontend pod                     Backend pod
+                                   (React + Nginx)                  (Node/Express)
+                                                                         │
+                            ┌──────────────┬──────────────┬─────────────┘
+                            ▼              ▼              ▼
+                       Azure SQL      Key Vault      Redis Cache
+                       (TDE + geo-    (secrets,      (sessions,
+                        replication)   TDE keys)      query cache)
 ```
 
-## Quick Start (Local)
+Locally it's simpler: the React build is served by Nginx, which proxies `/api` to the Node backend, and the backend talks to a SQLite file instead of Azure SQL. Same code, smaller database. I kept the data layer behind one module (`backend/src/database.js`), so moving to Azure SQL is contained to that file — swap the `better-sqlite3` driver for an mssql one and read the connection string from Key Vault. The routes don't change. It's not literally zero work, but it's one module instead of every endpoint.
 
-### Prerequisites
-- Node.js 20+
-- Docker Desktop
+## Folder layout
 
-### Run with Docker Compose
+```
+backend/        Node/Express REST API + Jest tests
+frontend/       React single-page app, served by Nginx
+kubernetes/     AKS manifests (deployments, ingress, HPA, Key Vault CSI)
+terraform/      Azure infra as code (VNet, AKS, SQL, Key Vault, APIM...)
+docs/           Report, architecture notes, Azure setup guide
+docker-compose.yml
+```
+
+## Running it locally
+
+You'll need Node 20+ and Docker Desktop.
+
+### The easy way (Docker)
+
 ```bash
 docker-compose up --build
 ```
-App available at http://localhost:3000
 
-### Run without Docker
+Then open http://localhost:3000. The backend comes up on :3001 behind the scenes.
+
+### Without Docker
+
 ```bash
-# Backend
+# terminal 1 — backend
 cd backend
 npm install
-node src/seed.js    # Create demo users
-npm start           # Runs on :3001
+node src/seed.js     # creates the demo users
+npm start            # listens on :3001
 
-# Frontend (new terminal)
+# terminal 2 — frontend
 cd frontend
 npm install
-npm start           # Runs on :3000
+npm start            # opens on :3000
 ```
 
-### Demo Credentials
-| Role | Email | Password |
-|------|-------|----------|
-| Admin | admin@healthsys.com | Admin@1234 |
-| Doctor | dr.smith@healthsys.com | Doctor@1234 |
-| Patient | patient1@example.com | Patient@1234 |
+### Demo logins
 
-## Azure Deployment
+| Role    | Email                   | Password     |
+|---------|-------------------------|--------------|
+| Admin   | admin@healthsys.com     | Admin@1234   |
+| Doctor  | dr.smith@healthsys.com  | Doctor@1234  |
+| Patient | patient1@example.com    | Patient@1234 |
 
-### 1. Provision Infrastructure
-```bash
-cd terraform
-terraform init
-terraform plan -var-file="production.tfvars" -out=tfplan
-terraform apply tfplan
-```
+(There's a second doctor and a second patient in the seed file too, if you want to test the "can't see other people's records" rule.)
 
-### 2. Configure AKS
-```bash
-az aks get-credentials --resource-group hms-production-rg --name hms-aks
-```
+## Tests
 
-### 3. Build & Push Images
-```bash
-az acr login --name hmsacr
-docker build -t hmsacr.azurecr.io/hms-backend:1.0.0 ./backend
-docker build -t hmsacr.azurecr.io/hms-frontend:1.0.0 ./frontend
-docker push hmsacr.azurecr.io/hms-backend:1.0.0
-docker push hmsacr.azurecr.io/hms-frontend:1.0.0
-```
-
-### 4. Deploy to AKS
-```bash
-kubectl apply -f kubernetes/
-kubectl rollout status deployment/hms-backend -n healthcare-system
-```
-
-## Security
-
-- **Authentication**: JWT (8h expiry) + bcrypt (cost 12)
-- **Authorization**: Role-Based Access Control (PATIENT / DOCTOR / ADMIN)
-- **MFA**: Mandatory for DOCTOR and ADMIN via Azure AD Conditional Access
-- **Encryption at rest**: AES-256 via Azure SQL TDE with Key Vault-managed keys
-- **Encryption in transit**: TLS 1.2+ enforced
-- **API security**: Azure API Management + WAF (OWASP 3.2)
-- **Network**: VNet isolation, NSGs, Azure Firewall, DDoS Protection
-- **Compliance**: HIPAA audit trail, GDPR data minimization
-
-## Running Tests
 ```bash
 cd backend
-npm install
 npm test
 ```
 
-## Azure Services Used
+There are 19 integration tests covering registration, login, the RBAC rules, and each resource. The interesting ones are the negative cases — a patient trying to read another patient's EHR gets a 403, a patient trying to write a prescription gets blocked, and so on. Those are the tests that actually prove the access control works.
 
-| Category | Service |
-|----------|---------|
-| Compute | Azure Kubernetes Service (AKS) |
-| Networking | VNet, NSGs, Application Gateway, Azure Firewall, Front Door |
-| Security | Azure AD, Key Vault, Defender for Cloud, DDoS Protection |
-| API | Azure API Management (APIM) |
-| Database | Azure SQL Database (TDE + Geo-replication), Redis Cache |
-| Containers | Azure Container Registry (ACR) |
-| Monitoring | Azure Monitor, Log Analytics, Application Insights |
-| Governance | Azure Policy, Azure Cost Management, Azure Advisor |
+## Deploying to Azure (the real version)
 
-## Compliance
-- **HIPAA**: Audit logging, data encryption, access controls, BAA with Azure
-- **GDPR**: Data minimization, right to access, breach notification via Defender for Cloud
+I'm not going to pretend this is a one-click deploy. The order that worked for me:
+
+1. **Infrastructure** — `cd terraform && terraform init && terraform apply`. This stands up the resource group, VNet, AKS, ACR, SQL, Key Vault, etc. Read `variables.tf` first; you'll want to set your own region and admin object IDs.
+2. **Get cluster creds** — `az aks get-credentials -g hms-production-rg -n hms-aks`.
+3. **Build and push images** to ACR:
+   ```bash
+   az acr login --name hmsacr
+   docker build -t hmsacr.azurecr.io/hms-backend:1.0.0 ./backend
+   docker build -t hmsacr.azurecr.io/hms-frontend:1.0.0 ./frontend
+   docker push hmsacr.azurecr.io/hms-backend:1.0.0
+   docker push hmsacr.azurecr.io/hms-frontend:1.0.0
+   ```
+4. **Apply the manifests** — `kubectl apply -f kubernetes/` and wait for the rollout.
+
+The GitHub Actions workflow in `.github/workflows/ci-cd.yml` does steps 3 and 4 automatically on a push to `main` (it runs the tests first and won't deploy if they fail).
+
+## Security, in one place
+
+- Auth: JWT with an 8-hour expiry, bcrypt at cost factor 12.
+- Authorization: role checks plus a permission map in `backend/src/middleware/rbac.js`. A patient literally cannot call the EHR-create endpoint.
+- MFA: enforced for doctors and admins through Azure AD Conditional Access (configured in `terraform/security.tf`).
+- Encryption at rest: Azure SQL TDE with the key in Key Vault. At rest locally it's just a file, which is fine for a demo but I call that out in the report.
+- In transit: TLS 1.2+ end to end, HSTS set in the app via Helmet.
+- Network: the database subnet has no public route; it's reachable only from the AKS subnet via NSG rules. WAF sits in front for the OWASP top-10 stuff.
+- Compliance: audit logging for HIPAA, data-minimisation and "export my data" thinking for GDPR. I treat these as design goals I can point to, not a certification.
+
+## Azure services used
+
+Networking — VNet, subnets, NSGs, Application Gateway, Azure Firewall, Front Door, DDoS Protection.
+Identity — Azure AD, RBAC, MFA, OAuth2/OIDC.
+Security — Key Vault, Defender for Cloud, WAF.
+Compute & containers — AKS, ACR, Docker.
+Data — Azure SQL (TDE + geo-replication), Redis Cache.
+API — Azure API Management.
+Monitoring — Azure Monitor, Log Analytics, Application Insights.
+Governance — Azure Policy, Advisor.
+
+There's a service-by-service rationale (why each one, and the cheaper alternative where there is one) in `docs/architecture.md`.

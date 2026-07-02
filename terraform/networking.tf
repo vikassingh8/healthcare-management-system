@@ -252,3 +252,144 @@ resource "azurerm_web_application_firewall_policy" "main" {
 
   tags = var.tags
 }
+
+# The Application Gateway itself (WAF_v2). The AKS AGIC add-on (see aks.tf)
+# programmes its listeners, backend pools and routing rules at runtime from the
+# Kubernetes Ingress object (kubernetes/ingress.yaml), so the blocks below are
+# just the minimum Terraform needs to create the gateway — hence the
+# ignore_changes on everything AGIC manages.
+resource "azurerm_application_gateway" "main" {
+  name                = "${var.project_name}-appgw"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+
+  sku {
+    name = "WAF_v2"
+    tier = "WAF_v2"
+  }
+
+  autoscale_configuration {
+    min_capacity = 2
+    max_capacity = 10
+  }
+
+  gateway_ip_configuration {
+    name      = "appgw-ip-config"
+    subnet_id = azurerm_subnet.appgw.id
+  }
+
+  frontend_port {
+    name = "http-port"
+    port = 80
+  }
+
+  frontend_ip_configuration {
+    name                 = "appgw-frontend-ip"
+    public_ip_address_id = azurerm_public_ip.appgw.id
+  }
+
+  backend_address_pool {
+    name = "default-pool"
+  }
+
+  backend_http_settings {
+    name                  = "default-http-settings"
+    cookie_based_affinity = "Disabled"
+    port                  = 80
+    protocol              = "Http"
+    request_timeout       = 30
+  }
+
+  http_listener {
+    name                           = "default-listener"
+    frontend_ip_configuration_name = "appgw-frontend-ip"
+    frontend_port_name             = "http-port"
+    protocol                       = "Http"
+  }
+
+  request_routing_rule {
+    name                       = "default-rule"
+    rule_type                  = "Basic"
+    http_listener_name         = "default-listener"
+    backend_address_pool_name  = "default-pool"
+    backend_http_settings_name = "default-http-settings"
+    priority                   = 100
+  }
+
+  firewall_policy_id = azurerm_web_application_firewall_policy.main.id
+
+  lifecycle {
+    ignore_changes = [
+      backend_address_pool,
+      backend_http_settings,
+      http_listener,
+      request_routing_rule,
+      frontend_port,
+      probe,
+      redirect_configuration,
+      url_path_map,
+      ssl_certificate,
+    ]
+  }
+
+  tags = var.tags
+}
+
+# Azure Front Door (Standard) — global entry point that routes to the
+# Application Gateway and enables fast regional failover.
+resource "azurerm_cdn_frontdoor_profile" "main" {
+  name                = "${var.project_name}-frontdoor"
+  resource_group_name = azurerm_resource_group.main.name
+  sku_name            = "Standard_AzureFrontDoor"
+  tags                = var.tags
+}
+
+resource "azurerm_cdn_frontdoor_endpoint" "main" {
+  name                     = "${var.project_name}-endpoint"
+  cdn_frontdoor_profile_id = azurerm_cdn_frontdoor_profile.main.id
+  tags                     = var.tags
+}
+
+resource "azurerm_cdn_frontdoor_origin_group" "main" {
+  name                     = "appgw-origin-group"
+  cdn_frontdoor_profile_id = azurerm_cdn_frontdoor_profile.main.id
+
+  load_balancing {
+    sample_size                 = 4
+    successful_samples_required = 3
+  }
+
+  health_probe {
+    path                = "/health"
+    protocol            = "Https"
+    interval_in_seconds = 30
+    request_type        = "GET"
+  }
+}
+
+resource "azurerm_cdn_frontdoor_origin" "appgw" {
+  name                          = "appgw-origin"
+  cdn_frontdoor_origin_group_id = azurerm_cdn_frontdoor_origin_group.main.id
+  enabled                       = true
+
+  host_name                      = azurerm_public_ip.appgw.ip_address
+  origin_host_header             = azurerm_public_ip.appgw.ip_address
+  http_port                      = 80
+  https_port                     = 443
+  priority                       = 1
+  weight                         = 1
+  certificate_name_check_enabled = false
+}
+
+resource "azurerm_cdn_frontdoor_route" "main" {
+  name                          = "default-route"
+  cdn_frontdoor_endpoint_id     = azurerm_cdn_frontdoor_endpoint.main.id
+  cdn_frontdoor_origin_group_id = azurerm_cdn_frontdoor_origin_group.main.id
+  cdn_frontdoor_origin_ids      = [azurerm_cdn_frontdoor_origin.appgw.id]
+
+  supported_protocols    = ["Http", "Https"]
+  patterns_to_match      = ["/*"]
+  forwarding_protocol    = "HttpsOnly"
+  https_redirect_enabled = true
+  link_to_default_domain = true
+}

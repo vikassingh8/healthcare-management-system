@@ -16,7 +16,7 @@ resource "azurerm_container_registry" "main" {
     default_action = "Deny"
     ip_rule {
       action   = "Allow"
-      ip_range = "0.0.0.0/0"  # Restrict to your CI/CD IP in production
+      ip_range = "0.0.0.0/0" # Restrict to your CI/CD IP in production
     }
   }
 
@@ -73,9 +73,9 @@ resource "azurerm_kubernetes_cluster" "main" {
   }
 
   azure_active_directory_role_based_access_control {
-    managed                = true
-    azure_rbac_enabled     = true
-    tenant_id              = var.tenant_id
+    managed            = true
+    azure_rbac_enabled = true
+    tenant_id          = var.tenant_id
   }
 
   key_vault_secrets_provider {
@@ -83,13 +83,20 @@ resource "azurerm_kubernetes_cluster" "main" {
     secret_rotation_interval = "2m"
   }
 
+  # Application Gateway Ingress Controller — lets the Kubernetes Ingress
+  # (kubernetes/ingress.yaml) drive the Application Gateway + WAF defined in
+  # networking.tf.
+  ingress_application_gateway {
+    gateway_id = azurerm_application_gateway.main.id
+  }
+
   auto_scaler_profile {
-    balance_similar_node_groups  = false
-    expander                     = "random"
-    max_graceful_termination_sec = 600
-    scale_down_delay_after_add   = "10m"
-    scale_down_unneeded          = "10m"
-    scan_interval                = "10s"
+    balance_similar_node_groups   = false
+    expander                      = "random"
+    max_graceful_termination_sec  = 600
+    scale_down_delay_after_add    = "10m"
+    scale_down_unneeded           = "10m"
+    scan_interval                 = "10s"
     skip_nodes_with_local_storage = false
     skip_nodes_with_system_pods   = true
   }

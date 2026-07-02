@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="770" viewBox="0 0 1000 770" font-family="Segoe UI, Arial, sans-serif">
+<rect width="1000" height="770" fill="#ffffff"/>
+<defs><marker id="a" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#5a6470"/></marker></defs>
+<text x="500.0" y="32" text-anchor="middle" font-size="20" font-weight="700" fill="#222">Healthcare Management System — Azure Architecture</text>
+<rect x="70" y="286" width="660" height="460" rx="10" fill="none" stroke="#9aa3ad" stroke-width="1.5"/>
+<text x="82" y="306" font-size="12.5" fill="#5a6470" font-weight="600">Virtual Network  10.0.0.0/16</text>
+<rect x="95" y="316" width="420" height="150" rx="10" fill="none" stroke="#9aa3ad" stroke-width="1.5" stroke-dasharray="5,4"/>
+<text x="107" y="336" font-size="12.5" fill="#5a6470" font-weight="600">Web subnet  10.0.1.0/24</text>
+<rect x="95" y="576" width="420" height="110" rx="10" fill="none" stroke="#9aa3ad" stroke-width="1.5" stroke-dasharray="5,4"/>
+<text x="107" y="596" font-size="12.5" fill="#5a6470" font-weight="600">Data subnet  10.0.2.0/24  (no public route)</text>
+<line x1="500" y1="106" x2="500" y2="134" stroke="#5a6470" stroke-width="1.6" marker-end="url(#a)"/>
+<line x1="500" y1="174" x2="500" y2="196" stroke="#5a6470" stroke-width="1.6" marker-end="url(#a)"/>
+<line x1="459" y1="236" x2="234" y2="346" stroke="#5a6470" stroke-width="1.6" marker-end="url(#a)"/>
+<line x1="270" y1="365" x2="300" y2="365" stroke="#5a6470" stroke-width="1.6" marker-end="url(#a)"/>
+<line x1="221" y1="384" x2="278" y2="426" stroke="#5a6470" stroke-width="1.6" marker-end="url(#a)"/>
+<line x1="294" y1="466" x2="221" y2="606" stroke="#5a6470" stroke-width="1.6" marker-end="url(#a)"/>
+<line x1="316" y1="466" x2="394" y2="606" stroke="#5a6470" stroke-width="1.6" marker-end="url(#a)"/>
+<line x1="400" y1="449" x2="800" y2="462" stroke="#5a6470" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#a)"/>
+<line x1="400" y1="431" x2="800" y2="368" stroke="#5a6470" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#a)"/>
+<text x="600" y="397" text-anchor="middle" font-size="10.5" fill="#5a6470">secrets</text>
+<line x1="400" y1="440" x2="800" y2="415" stroke="#5a6470" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#a)"/>
+<text x="600" y="425" text-anchor="middle" font-size="10.5" fill="#5a6470">tokens</text>
+<line x1="400" y1="458" x2="800" y2="509" stroke="#5a6470" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#a)"/>
+<text x="600" y="481" text-anchor="middle" font-size="10.5" fill="#5a6470">telemetry</text>
+<line x1="260" y1="606" x2="835" y2="374" stroke="#5a6470" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#a)"/>
+<text x="547" y="487" text-anchor="middle" font-size="10.5" fill="#5a6470">TDE key</text>
+<line x1="243" y1="606" x2="601" y2="388" stroke="#5a6470" stroke-width="1.6" stroke-dasharray="5,4" marker-end="url(#a)"/>
+<text x="422" y="494" text-anchor="middle" font-size="10.5" fill="#5a6470">egress</text>
+<rect x="420" y="64" width="160" height="42" rx="7" fill="#eef0f2" stroke="#5a6470" stroke-width="1.6"/>
+<text x="500.0" y="89.0" text-anchor="middle" font-size="12.5" fill="#222">Patient / Doctor / Admin</text>
+<rect x="410" y="134" width="180" height="40" rx="7" fill="#e8f1fb" stroke="#2f6db5" stroke-width="1.6"/>
+<text x="500.0" y="158.0" text-anchor="middle" font-size="12.5" fill="#222">Azure Front Door</text>
+<rect x="390" y="196" width="220" height="40" rx="7" fill="#e8f1fb" stroke="#2f6db5" stroke-width="1.6"/>
+<text x="500.0" y="220.0" text-anchor="middle" font-size="12.5" fill="#222">App Gateway + WAF</text>
+<rect x="120" y="346" width="150" height="38" rx="7" fill="#e9f7ec" stroke="#2e8b57" stroke-width="1.6"/>
+<text x="195.0" y="369.0" text-anchor="middle" font-size="12.5" fill="#222">AKS Ingress</text>
+<rect x="300" y="346" width="190" height="38" rx="7" fill="#e9f7ec" stroke="#2e8b57" stroke-width="1.6"/>
+<text x="395.0" y="369.0" text-anchor="middle" font-size="12.5" fill="#222">Frontend (React + Nginx)</text>
+<rect x="210" y="426" width="190" height="40" rx="7" fill="#e9f7ec" stroke="#2e8b57" stroke-width="1.6"/>
+<text x="305.0" y="450.0" text-anchor="middle" font-size="12.5" fill="#222">Backend (Node / Express)</text>
+<rect x="120" y="606" width="180" height="40" rx="7" fill="#fdf0e3" stroke="#cc7a1f" stroke-width="1.6"/>
+<text x="210.0" y="630.0" text-anchor="middle" font-size="12.5" fill="#222">Azure SQL (TDE + geo)</text>
+<rect x="330" y="606" width="150" height="40" rx="7" fill="#fdf0e3" stroke="#cc7a1f" stroke-width="1.6"/>
+<text x="405.0" y="630.0" text-anchor="middle" font-size="12.5" fill="#222">Redis Cache</text>
+<rect x="560" y="346" width="150" height="42" rx="7" fill="#e8f1fb" stroke="#2f6db5" stroke-width="1.6"/>
+<text x="635.0" y="371.0" text-anchor="middle" font-size="12.5" fill="#222">Azure Firewall</text>
+<rect x="800" y="336" width="165" height="38" rx="7" fill="#f1ecfa" stroke="#6a4fb0" stroke-width="1.6"/>
+<text x="882.5" y="359.0" text-anchor="middle" font-size="12.5" fill="#222">Key Vault</text>
+<rect x="800" y="391" width="165" height="38" rx="7" fill="#f1ecfa" stroke="#6a4fb0" stroke-width="1.6"/>
+<text x="882.5" y="414.0" text-anchor="middle" font-size="12.5" fill="#222">Azure AD + MFA</text>
+<rect x="800" y="446" width="165" height="38" rx="7" fill="#eef0f2" stroke="#5a6470" stroke-width="1.6"/>
+<text x="882.5" y="469.0" text-anchor="middle" font-size="12.5" fill="#222">API Management</text>
+<rect x="800" y="501" width="165" height="38" rx="7" fill="#eef0f2" stroke="#5a6470" stroke-width="1.6"/>
+<text x="882.5" y="524.0" text-anchor="middle" font-size="12.5" fill="#222">Monitor + App Insights</text>
+</svg>

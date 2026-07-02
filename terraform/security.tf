@@ -136,12 +136,20 @@ resource "azurerm_security_center_subscription_pricing" "defender_keyvault" {
 }
 
 # Azure Policy — Enforce HIPAA/GDPR compliance — Phase 8: Governance
+# "Deploy SQL DB transparent data encryption" — a DeployIfNotExists built-in.
+# This needs a managed identity and a location on the assignment so the policy
+# engine can remediate.
 resource "azurerm_resource_group_policy_assignment" "sql_tde" {
-  name                 = "require-sql-tde"
+  name                 = "deploy-sql-tde"
   resource_group_id    = azurerm_resource_group.main.id
-  policy_definition_id = "/providers/Microsoft.Authorization/policyDefinitions/17k78e20-9358-41c9-923c-fb736d382a12"
-  display_name         = "Require SQL Transparent Data Encryption"
+  policy_definition_id = "/providers/Microsoft.Authorization/policyDefinitions/86a912f6-9a06-4e26-b447-11b16ba8659f"
+  display_name         = "Deploy SQL Transparent Data Encryption"
+  location             = azurerm_resource_group.main.location
   enforce              = true
+
+  identity {
+    type = "SystemAssigned"
+  }
 }
 
 resource "azurerm_resource_group_policy_assignment" "keyvault_soft_delete" {
@@ -182,9 +190,11 @@ resource "azurerm_consumption_budget_resource_group" "main" {
   amount            = 5000
   time_grain        = "Monthly"
 
+  # Azure requires the start date to be the first of a month and not in the
+  # past relative to when this is applied.
   time_period {
-    start_date = "2025-01-01T00:00:00Z"
-    end_date   = "2026-12-31T23:59:59Z"
+    start_date = "2026-06-01T00:00:00Z"
+    end_date   = "2027-12-31T23:59:59Z"
   }
 
   notification {

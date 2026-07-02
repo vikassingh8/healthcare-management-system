@@ -18,7 +18,7 @@ resource "azurerm_mssql_server" "primary" {
 
   azuread_administrator {
     login_username = "HMS-DBA-Group"
-    object_id      = "00000000-0000-0000-0000-000000000000"  # Set to actual AAD group object ID
+    object_id      = "00000000-0000-0000-0000-000000000000" # Set to actual AAD group object ID
     tenant_id      = var.tenant_id
   }
 
@@ -55,9 +55,9 @@ resource "azurerm_mssql_database" "main" {
   }
 
   threat_detection_policy {
-    state                      = "Enabled"
-    email_account_admins       = true
-    retention_days             = 90
+    state                = "Enabled"
+    email_account_admins = "Enabled"
+    retention_days       = 90
   }
 
   tags = var.tags
@@ -104,14 +104,14 @@ resource "azurerm_mssql_virtual_network_rule" "aks" {
   subnet_id = azurerm_subnet.aks.id
 }
 
-# Microsoft Defender for SQL — Advanced Threat Protection
-resource "azurerm_mssql_server_microsoft_support_auditing_policy" "main" {
-  server_id                  = azurerm_mssql_server.primary.id
-  blob_storage_endpoint      = azurerm_storage_account.audit.primary_blob_endpoint
-  storage_account_access_key = azurerm_storage_account.audit.primary_access_key
+# SQL auditing — writes the audit trail to the dedicated GRS storage account
+resource "azurerm_mssql_server_extended_auditing_policy" "main" {
+  server_id                               = azurerm_mssql_server.primary.id
+  storage_endpoint                        = azurerm_storage_account.audit.primary_blob_endpoint
+  storage_account_access_key              = azurerm_storage_account.audit.primary_access_key
   storage_account_access_key_is_secondary = false
-  enabled                    = true
-  log_monitoring_enabled     = true
+  retention_in_days                       = 90
+  log_monitoring_enabled                  = true
 }
 
 # Azure Redis Cache — Phase 6: Caching for Performance
@@ -145,12 +145,12 @@ resource "azurerm_redis_cache" "main" {
 
 # Storage account for SQL audit logs
 resource "azurerm_storage_account" "audit" {
-  name                     = "${replace(var.project_name, "-", "")}auditlogs"
-  resource_group_name      = azurerm_resource_group.main.name
-  location                 = azurerm_resource_group.main.location
-  account_tier             = "Standard"
-  account_replication_type = "GRS"
-  min_tls_version          = "TLS1_2"
+  name                       = "${replace(var.project_name, "-", "")}auditlogs"
+  resource_group_name        = azurerm_resource_group.main.name
+  location                   = azurerm_resource_group.main.location
+  account_tier               = "Standard"
+  account_replication_type   = "GRS"
+  min_tls_version            = "TLS1_2"
   https_traffic_only_enabled = true
 
   blob_properties {

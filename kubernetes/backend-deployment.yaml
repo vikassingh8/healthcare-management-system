@@ -50,6 +50,14 @@ spec:
                 secretKeyRef:
                   name: hms-secrets
                   key: JWT_SECRET
+            # Azure SQL connection string, sourced from Key Vault via the CSI
+            # driver (see secrets.yaml). The production image uses the mssql
+            # data driver; no local database file is mounted.
+            - name: DB_CONNECTION_STRING
+              valueFrom:
+                secretKeyRef:
+                  name: hms-secrets
+                  key: DB_CONNECTION_STRING
           resources:
             requests:
               cpu: "250m"
@@ -76,8 +84,6 @@ spec:
             - name: secrets-store
               mountPath: "/mnt/secrets"
               readOnly: true
-            - name: db-storage
-              mountPath: /app/data
       volumes:
         - name: secrets-store
           csi:
@@ -85,9 +91,6 @@ spec:
             readOnly: true
             volumeAttributes:
               secretProviderClass: azure-keyvault-secrets
-        - name: db-storage
-          persistentVolumeClaim:
-            claimName: hms-db-pvc
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
@@ -97,16 +100,3 @@ spec:
                   matchLabels:
                     app: hms-backend
                 topologyKey: kubernetes.io/hostname
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: hms-db-pvc
-  namespace: healthcare-system
-spec:
-  accessModes:
-    - ReadWriteOnce
-  storageClassName: managed-premium
-  resources:
-    requests:
-      storage: 10Gi

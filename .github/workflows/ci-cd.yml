@@ -1,0 +1,95 @@
+# Build, test, and deploy the healthcare app.
+# Tests run on every push and PR. Deploy only happens on main, and only
+# if the tests passed first — a red build never reaches the cluster.
+
+name: ci-cd
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  ACR_NAME: ${{ secrets.ACR_NAME }}            # e.g. hmsacr
+  RESOURCE_GROUP: ${{ secrets.RESOURCE_GROUP }} # e.g. hms-production-rg
+  AKS_CLUSTER: ${{ secrets.AKS_CLUSTER }}       # e.g. hms-aks
+  IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  test:
+    name: Backend tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install
+        working-directory: backend
+        run: npm ci
+
+      - name: Run tests
+        working-directory: backend
+        run: npm test
+
+  build-and-push:
+    name: Build images and push to ACR
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: ACR login
+        run: az acr login --name "$ACR_NAME"
+
+      - name: Build and push backend
+        run: |
+          docker build -t "$ACR_NAME.azurecr.io/hms-backend:$IMAGE_TAG" ./backend
+          docker push "$ACR_NAME.azurecr.io/hms-backend:$IMAGE_TAG"
+
+      - name: Build and push frontend
+        run: |
+          docker build -t "$ACR_NAME.azurecr.io/hms-frontend:$IMAGE_TAG" ./frontend
+          docker push "$ACR_NAME.azurecr.io/hms-frontend:$IMAGE_TAG"
+
+  deploy:
+    name: Roll out to AKS
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Get cluster credentials
+        run: az aks get-credentials -g "$RESOURCE_GROUP" -n "$AKS_CLUSTER" --overwrite-existing
+
+      - name: Apply manifests
+        run: kubectl apply -f kubernetes/
+
+      - name: Point deployments at the new images
+        run: |
+          kubectl set image deployment/hms-backend \
+            backend="$ACR_NAME.azurecr.io/hms-backend:$IMAGE_TAG" -n healthcare-system
+          kubectl set image deployment/hms-frontend \
+            frontend="$ACR_NAME.azurecr.io/hms-frontend:$IMAGE_TAG" -n healthcare-system
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/hms-backend -n healthcare-system --timeout=180s
+          kubectl rollout status deployment/hms-frontend -n healthcare-system --timeout=180s

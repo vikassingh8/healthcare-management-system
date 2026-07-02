@@ -26,7 +26,7 @@ terraform {
 provider "azurerm" {
   features {
     key_vault {
-      purge_soft_delete_on_destroy = false
+      purge_soft_delete_on_destroy    = false
       recover_soft_deleted_key_vaults = true
     }
     resource_group {
@@ -49,7 +49,7 @@ resource "azurerm_resource_group" "main" {
 
 # Azure Active Directory Application for HMS
 resource "azuread_application" "hms_app" {
-  display_name = "Healthcare-Management-System"
+  display_name     = "Healthcare-Management-System"
   sign_in_audience = "AzureADMyOrg"
 
   web {
